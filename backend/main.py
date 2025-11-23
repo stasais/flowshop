@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import simpy
 import random
 import salabim as sim
@@ -31,7 +31,7 @@ class Instance(BaseModel):
     jobs: List[Job]
     # Optional parameters for optimization
     maxIterations: int = 100
-    randomSeed: int = 42
+    randomSeed: Optional[int] = 42
 
 class TaskLog(BaseModel):
     jobId: int
@@ -96,8 +96,9 @@ def optimize_with_random_search(instance: Instance, simulation_func) -> Schedule
     best_result = None
     best_makespan = float('inf')
     
-    # Use the seed
-    random.seed(instance.randomSeed)
+    # Use the seed if provided
+    if instance.randomSeed is not None:
+        random.seed(instance.randomSeed)
     
     # Run maxIterations times
     for _ in range(instance.maxIterations):

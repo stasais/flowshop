@@ -38,7 +38,7 @@ const DEFAULT_PARAMS: AlgorithmParams = {
   saInitialTemp: 1000,
   saCoolingRate: 0.03,
   maxIterations: 200,
-  randomSeed: 42
+  randomSeed: null
 };
 
 const App: React.FC = () => {
@@ -341,7 +341,7 @@ const App: React.FC = () => {
       <aside className="w-full md:w-96 bg-slate-900 border-r border-slate-800 flex flex-col p-6 gap-6 overflow-y-auto shrink-0 shadow-2xl z-10">
         <div>
           <h1 className="text-2xl font-bold text-blue-400 flex items-center gap-2">
-            <Activity className="w-6 h-6" /> FlowShop.AI
+            <Activity className="w-6 h-6" /> FlowShop HEO3
           </h1>
           <p className="text-xs text-slate-500 mt-1 uppercase tracking-wider">Discrete Event Simulation</p>
         </div>
@@ -469,13 +469,26 @@ const App: React.FC = () => {
                 <p className="text-[10px] text-slate-500">Number of random schedules to evaluate.</p>
               </div>
               <div className="space-y-1">
-                <label className="text-xs text-slate-400">Random Seed</label>
-                <input 
-                  type="number" 
-                  value={params.randomSeed || 42}
-                  onChange={(e) => setParams(p => ({...p, randomSeed: parseInt(e.target.value) || 42}))}
-                  className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-sm"
-                />
+                <div className="flex items-center justify-between">
+                  <label className="text-xs text-slate-400">Random Seed</label>
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="checkbox"
+                      checked={params.randomSeed !== null}
+                      onChange={(e) => setParams(p => ({...p, randomSeed: e.target.checked ? 42 : null}))}
+                      className="w-3 h-3 rounded border-slate-700 bg-slate-800 text-blue-500 focus:ring-0 focus:ring-offset-0"
+                    />
+                    <span className="text-[10px] text-slate-500">Enable</span>
+                  </div>
+                </div>
+                {params.randomSeed !== null && (
+                  <input 
+                    type="number" 
+                    value={params.randomSeed}
+                    onChange={(e) => setParams(p => ({...p, randomSeed: parseInt(e.target.value) || 0}))}
+                    className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-sm mt-1"
+                  />
+                )}
                 <p className="text-[10px] text-slate-500">Ensures reproducibility of results.</p>
               </div>
               <div className="p-2 bg-yellow-900/20 rounded border border-yellow-900/50 text-[10px] text-yellow-500 mt-2">
@@ -590,9 +603,17 @@ const App: React.FC = () => {
           <div className="overflow-auto p-4 relative" style={{ minHeight: '300px', maxHeight: '600px' }}>
             {currentSchedule && instance ? (
                <div className="min-w-max">
-                 <div className="mb-4 flex gap-4 text-xs text-slate-500 font-mono">
-                    <span>Makespan: <strong className="text-slate-200">{currentSchedule.makespan}</strong></span>
-                    {currentSchedule.generation && <span>Found at Iteration: <strong className="text-slate-200">{currentSchedule.generation}</strong></span>}
+                 <div className="mb-4 flex flex-col gap-2 text-xs text-slate-500 font-mono">
+                    <div className="flex gap-4">
+                        <span>Makespan: <strong className="text-slate-200">{currentSchedule.makespan}</strong></span>
+                        {currentSchedule.generation && <span>Found at Iteration: <strong className="text-slate-200">{currentSchedule.generation}</strong></span>}
+                    </div>
+                    <div className="flex gap-2 items-start">
+                        <span className="shrink-0">Priority List:</span>
+                        <code className="text-slate-300 break-all bg-slate-950/50 px-2 rounded border border-slate-800">
+                            [{currentSchedule.permutation ? currentSchedule.permutation.join(', ') : 'N/A'}]
+                        </code>
+                    </div>
                  </div>
                  <GanttChart schedule={currentSchedule.schedule} instance={instance} makespan={currentSchedule.makespan} />
                </div>

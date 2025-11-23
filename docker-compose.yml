@@ -1,0 +1,12 @@
+services:
+  flowshop-app:
+    build:
+      context: .
+      args:
+        GEMINI_API_KEY: ${GEMINI_API_KEY}
+    container_name: flowshop-container
+    ports:
+      - "3030:80"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    restart: unless-stopped

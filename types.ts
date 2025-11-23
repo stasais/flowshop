@@ -47,7 +47,7 @@ export interface AlgorithmParams {
   
   // General
   maxIterations: number;
-  randomSeed: number;
+  randomSeed: number | null;
 }
 
 export interface OptimizationState {
