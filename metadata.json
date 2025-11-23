@@ -1,0 +1,5 @@
+{
+  "name": "FlowShop.AI - HFS Scheduler",
+  "description": "A discrete event simulation and optimization tool for Hybrid Flow Shop scheduling problems, featuring Genetic Algorithm optimization and Gemini-powered analysis.",
+  "requestFramePermissions": []
+}
