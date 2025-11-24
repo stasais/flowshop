@@ -5,3 +5,6 @@ mesa
 salabim
 numpy
 greenlet
+scikit-optimize
+deap
+optuna

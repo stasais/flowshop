@@ -27,7 +27,16 @@ const ALGO_INFO = {
   'HC': "Local Search. Iteratively makes small changes (swaps). Only accepts changes that improve the makespan. Fast but can get stuck in local optima.",
   'SimPy': "Python-based Discrete Event Simulation using SimPy library. Runs on backend.",
   'Mesa': "Python-based Agent-Based Modeling using Mesa library. Runs on backend.",
-  'Salabim': "Python-based Discrete Event Simulation using Salabim library. Runs on backend."
+  'Salabim': "Python-based Discrete Event Simulation using Salabim library. Runs on backend.",
+  'Skopt': "Scikit-Optimize (Bayesian Optimization). Uses Gaussian Processes to model the objective function and find the best permutation.",
+  'DEAP': "DEAP Genetic Algorithm. A robust evolutionary computation framework running on the backend.",
+  'Optuna': "Optuna. An automatic hyperparameter optimization software framework, used here for optimizing the job permutation.",
+  'LPT': "Longest Processing Time Heuristic. Prioritizes jobs with the longest total processing time.",
+  'SPT': "Shortest Processing Time Heuristic. Prioritizes jobs with the shortest total processing time.",
+  'Random': "Random Baseline. Generates random permutations and selects the best one.",
+  'Bottleneck': "Bottleneck Priority Heuristic. Prioritizes jobs based on processing time at the bottleneck stage (fewest machines).",
+  'FirstSPT': "First Stage SPT Heuristic. Prioritizes jobs based on shortest processing time at the first stage.",
+  'LastSPT': "Last Stage SPT Heuristic. Prioritizes jobs based on shortest processing time at the last stage."
 };
 
 const DEFAULT_PARAMS: AlgorithmParams = {
@@ -62,7 +71,15 @@ const App: React.FC = () => {
     'HC': [],
     'SimPy': [],
     'Mesa': [],
-    'Salabim': []
+    'Salabim': [],
+    'Skopt': [],
+    'DEAP': [],
+    'Optuna': [],
+    'LPT': [],
+    'SPT': [],
+    'Bottleneck': [],
+    'FirstSPT': [],
+    'LastSPT': []
   });
 
   // Optimization State
@@ -104,7 +121,12 @@ const App: React.FC = () => {
       history: [],
       isRunning: false
     }));
-    setComparisonHistory({ 'Random': [], 'GA': [], 'SA': [], 'HC': [], 'SimPy': [], 'Mesa': [], 'Salabim': [] });
+    setComparisonHistory({ 
+      'Random': [], 'GA': [], 'SA': [], 'HC': [], 
+      'SimPy': [], 'Mesa': [], 'Salabim': [],
+      'Skopt': [], 'DEAP': [], 'Optuna': [],
+      'LPT': [], 'SPT': [], 'Bottleneck': [], 'FirstSPT': [], 'LastSPT': []
+    });
     if (requestRef.current) cancelAnimationFrame(requestRef.current);
   };
 
@@ -192,7 +214,8 @@ const App: React.FC = () => {
   const startOptimization = () => {
     if (!instance) return;
 
-    if (['SimPy', 'Mesa', 'Salabim'].includes(optState.algorithm)) {
+    const backendAlgos = ['SimPy', 'Mesa', 'Salabim', 'Skopt', 'DEAP', 'Optuna', 'LPT', 'SPT', 'Random', 'Bottleneck', 'FirstSPT', 'LastSPT'];
+    if (backendAlgos.includes(optState.algorithm)) {
         runRemoteSimulation(optState.algorithm);
         return;
     }
@@ -334,12 +357,22 @@ const App: React.FC = () => {
 
   const currentSchedule = schedules[viewIndex];
 
+  const handleAlgorithmChange = (newAlgo: AlgorithmType) => {
+    let defaultIterations = 200;
+    if (newAlgo === 'DEAP') defaultIterations = 600;
+    else if (['Optuna', 'Skopt'].includes(newAlgo)) defaultIterations = 50;
+    else if (['SimPy', 'Mesa', 'Salabim', 'Random'].includes(newAlgo)) defaultIterations = 100;
+    
+    setParams(p => ({...p, maxIterations: defaultIterations}));
+    setOptState(p => ({...p, algorithm: newAlgo}));
+  };
+
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-slate-950 text-slate-200 font-sans">
+    <div className="h-screen flex flex-col md:flex-row bg-slate-950 text-slate-200 font-sans overflow-hidden">
       
       {/* Sidebar */}
-      <aside className="w-full md:w-96 bg-slate-900 border-r border-slate-800 flex flex-col p-6 gap-6 overflow-y-auto shrink-0 shadow-2xl z-10">
-        <div>
+      <aside className="w-full md:w-96 bg-slate-900 border-r border-slate-800 flex flex-col h-full shrink-0 shadow-2xl z-10">
+        <div className="p-6 pb-0 shrink-0">
           <h1 className="text-2xl font-bold text-blue-400 flex items-center gap-2">
             <Activity className="w-6 h-6" /> FlowShop HEO3
           </h1>
@@ -347,7 +380,7 @@ const App: React.FC = () => {
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-slate-800">
+        <div className="flex border-b border-slate-800 mx-6 mt-6 shrink-0">
           <button 
             onClick={() => setActiveTab('simulation')}
             className={`flex-1 py-2 text-xs font-semibold uppercase tracking-wider ${activeTab === 'simulation' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-slate-500 hover:text-slate-300'}`}
@@ -362,8 +395,9 @@ const App: React.FC = () => {
           </button>
         </div>
 
+        <div className="flex-1 overflow-y-auto p-6">
         {activeTab === 'simulation' ? (
-          <>
+          <div className="space-y-6">
             {/* Input */}
             <div className="space-y-2">
               <div className="flex justify-between items-center">
@@ -403,16 +437,31 @@ const App: React.FC = () => {
                  <div className="flex gap-2 relative group">
                     <select 
                       value={optState.algorithm}
-                      onChange={(e) => setOptState(p => ({...p, algorithm: e.target.value as AlgorithmType}))}
+                      onChange={(e) => handleAlgorithmChange(e.target.value as AlgorithmType)}
                       className="flex-1 bg-slate-800 border border-slate-700 text-sm rounded px-3 py-2 outline-none focus:border-blue-500"
                       disabled={optState.isRunning}
                     >
-                      <option value="GA">Genetic Algorithm (GA)</option>
-                      <option value="SA">Simulated Annealing (SA)</option>
-                      <option value="HC">Stochastic Hill Climbing</option>
-                      <option value="SimPy">SimPy Simulation</option>
-                      <option value="Mesa">Mesa Simulation</option>
-                      <option value="Salabim">Salabim Simulation</option>
+                      <optgroup label="Frontend Algorithms">
+                        <option value="GA">Genetic Algorithm (GA)</option>
+                        <option value="SA">Simulated Annealing (SA)</option>
+                        <option value="HC">Stochastic Hill Climbing</option>
+                      </optgroup>
+                      <optgroup label="Backend Models (Notebook)">
+                        <option value="Skopt">Scikit-Optimize</option>
+                        <option value="DEAP">DEAP Genetic Algorithm</option>
+                        <option value="Optuna">Optuna</option>
+                        <option value="LPT">Heuristic: LPT</option>
+                        <option value="SPT">Heuristic: SPT</option>
+                        <option value="Random">Random Baseline</option>
+                        <option value="Bottleneck">Heuristic: Bottleneck Priority</option>
+                        <option value="FirstSPT">Heuristic: First Stage SPT</option>
+                        <option value="LastSPT">Heuristic: Last Stage SPT</option>
+                      </optgroup>
+                      <optgroup label="Backend Simulation Engines">
+                        <option value="SimPy">SimPy Simulation</option>
+                        <option value="Mesa">Mesa Simulation</option>
+                        <option value="Salabim">Salabim Simulation</option>
+                      </optgroup>
                     </select>
                     <div className="p-2 text-slate-500 hover:text-blue-400 cursor-help">
                       <Info className="w-5 h-5" />
@@ -450,23 +499,27 @@ const App: React.FC = () => {
               </div>
               <OptimizationPlot data={optState.history} width={320} height={100} />
             </div>
-          </>
+          </div>
         ) : (
           <div className="space-y-6">
             <div className="space-y-3">
               <h3 className="text-sm font-semibold text-blue-400 flex items-center gap-2"><Settings className="w-4 h-4"/> Simulation Engine (Backend)</h3>
               <div className="p-2 bg-slate-800/50 rounded border border-slate-800 text-[10px] text-slate-400 mb-2">
-                SimPy, Mesa, and Salabim use a <strong>Random Search</strong> strategy. They run multiple independent simulations with random job permutations to find the best schedule.
+                SimPy, Mesa, Salabim, Skopt, DEAP, and Optuna run on the backend.
               </div>
               <div className="space-y-1">
-                <label className="text-xs text-slate-400">Max Iterations (Simulations)</label>
+                <label className="text-xs text-slate-400">Max Iterations / Generations</label>
                 <input 
                   type="number" 
                   value={params.maxIterations}
                   onChange={(e) => setParams(p => ({...p, maxIterations: parseInt(e.target.value) || 100}))}
                   className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-sm"
                 />
-                <p className="text-[10px] text-slate-500">Number of random schedules to evaluate.</p>
+                <p className="text-[10px] text-slate-500">
+                  DEAP: Generations (Default 600)<br/>
+                  Optuna/Skopt: Trials (Default 50)<br/>
+                  SimPy/Mesa/Salabim: Random Samples (Default 100)
+                </p>
               </div>
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
@@ -491,13 +544,10 @@ const App: React.FC = () => {
                 )}
                 <p className="text-[10px] text-slate-500">Ensures reproducibility of results.</p>
               </div>
-              <div className="p-2 bg-yellow-900/20 rounded border border-yellow-900/50 text-[10px] text-yellow-500 mt-2">
-                 Note: These parameters apply to SimPy, Mesa, and Salabim models running on the backend.
-              </div>
             </div>
 
             <div className="space-y-3 border-t border-slate-800 pt-4">
-              <h3 className="text-sm font-semibold text-blue-400">Genetic Algorithm (GA)</h3>
+              <h3 className="text-sm font-semibold text-blue-400">Genetic Algorithm (Frontend & DEAP)</h3>
               <div className="space-y-1">
                 <label className="text-xs text-slate-400">Population Size</label>
                 <input 
@@ -506,7 +556,7 @@ const App: React.FC = () => {
                   onChange={(e) => setParams(p => ({...p, gaPopulationSize: parseInt(e.target.value) || 20}))}
                   className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-sm"
                 />
-                <p className="text-[10px] text-slate-500">Number of candidate solutions in each generation.</p>
+                <p className="text-[10px] text-slate-500">Number of candidate solutions in each generation. (Default: 20)</p>
               </div>
               <div className="space-y-1">
                 <label className="text-xs text-slate-400">Mutation Rate (0-1)</label>
@@ -517,7 +567,7 @@ const App: React.FC = () => {
                   onChange={(e) => setParams(p => ({...p, gaMutationRate: parseFloat(e.target.value) || 0.2}))}
                   className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-sm"
                 />
-                <p className="text-[10px] text-slate-500">Probability of random changes in offspring.</p>
+                <p className="text-[10px] text-slate-500">Probability of random changes in offspring. (Default: 0.2)</p>
               </div>
               <div className="space-y-1">
                 <label className="text-xs text-slate-400">Tournament Size</label>
@@ -527,7 +577,7 @@ const App: React.FC = () => {
                   onChange={(e) => setParams(p => ({...p, gaTournamentSize: parseInt(e.target.value) || 3}))}
                   className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-sm"
                 />
-                <p className="text-[10px] text-slate-500">Number of individuals selected for tournament.</p>
+                <p className="text-[10px] text-slate-500">Number of individuals selected for tournament. (Default: 3)</p>
               </div>
               <div className="space-y-1">
                 <label className="text-xs text-slate-400">Elitism Count</label>
@@ -537,12 +587,12 @@ const App: React.FC = () => {
                   onChange={(e) => setParams(p => ({...p, gaElitismCount: parseInt(e.target.value) || 2}))}
                   className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-sm"
                 />
-                <p className="text-[10px] text-slate-500">Number of top individuals preserved for next generation.</p>
+                <p className="text-[10px] text-slate-500">Number of top individuals preserved for next generation. (Default: 2)</p>
               </div>
             </div>
 
             <div className="space-y-3 border-t border-slate-800 pt-4">
-              <h3 className="text-sm font-semibold text-blue-400">Simulated Annealing (SA)</h3>
+              <h3 className="text-sm font-semibold text-blue-400">Simulated Annealing (Frontend)</h3>
               <div className="space-y-1">
                 <label className="text-xs text-slate-400">Initial Temperature</label>
                 <input 
@@ -551,7 +601,7 @@ const App: React.FC = () => {
                   onChange={(e) => setParams(p => ({...p, saInitialTemp: parseInt(e.target.value) || 1000}))}
                   className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-sm"
                 />
-                <p className="text-[10px] text-slate-500">Starting temperature. Higher values allow more exploration.</p>
+                <p className="text-[10px] text-slate-500">Starting temperature. Higher values allow more exploration. (Default: 1000)</p>
               </div>
               <div className="space-y-1">
                 <label className="text-xs text-slate-400">Cooling Rate (0-1)</label>
@@ -562,16 +612,17 @@ const App: React.FC = () => {
                   onChange={(e) => setParams(p => ({...p, saCoolingRate: parseFloat(e.target.value) || 0.03}))}
                   className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-sm"
                 />
-                <p className="text-[10px] text-slate-500">Rate at which temperature decreases. Lower is slower convergence.</p>
+                <p className="text-[10px] text-slate-500">Rate at which temperature decreases. Lower is slower convergence. (Default: 0.03)</p>
               </div>
             </div>
           </div>
         )}
+        </div>
 
       </aside>
 
       {/* Main View */}
-      <main className="flex-1 p-6 overflow-y-auto flex flex-col bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-slate-950 gap-6">
+      <main className="flex-1 h-full overflow-y-auto p-6 flex flex-col bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-slate-950 gap-6">
         
         {/* Top Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 shrink-0">

@@ -29,7 +29,7 @@ export interface ScheduleResult {
   generation?: number;
 }
 
-export type AlgorithmType = 'GA' | 'SA' | 'HC' | 'SimPy' | 'Mesa' | 'Salabim'; // Genetic, Simulated Annealing, Hill Climbing, Python Backends
+export type AlgorithmType = 'GA' | 'SA' | 'HC' | 'SimPy' | 'Mesa' | 'Salabim' | 'Skopt' | 'DEAP' | 'Optuna' | 'LPT' | 'SPT' | 'Random' | 'Bottleneck' | 'FirstSPT' | 'LastSPT';
 
 export interface AlgorithmParams {
   // GA
